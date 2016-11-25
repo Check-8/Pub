@@ -1,0 +1,38 @@
+server:
+  port: 8080
+    
+eureka:
+  instance:
+    statusPageUrlPath: /info
+    healthCheckUrlPath: /health    
+    
+logging:
+  level:
+    ROOT: INFO
+    org.springframework.web: DEBUG
+    
+zuul:
+  routes:
+    ui:
+      path: /ui/**
+      serviceId: ui
+    tab:
+      path: /tab/**
+      serviceId: tab
+    opentab:
+      path: /opentab/**
+      serviceId: opentab
+    cheftodo:
+      path: /cheftodo/**
+      serviceId: cheftodo
+    menu:
+      path: /menu/**
+      serviceId:
+      
+hystrix:
+  command:
+    default:
+      execution:
+        timeout:
+          enabled: false
+  

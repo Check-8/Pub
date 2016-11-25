@@ -1,0 +1,12 @@
+version: '2'
+services:
+  mysql_base:
+    image: mysql/mysql-server:5.7.14
+    mem_limit: 512m
+    environment:
+    - MYSQL_ROOT_PASSWORD=pwd_root
+    volumes:
+    - ./my.cnf:/etc/my.cnf
+    - ./init_monolith_db.sql:/etc/init_monolith_db.sql
+    - ./init_single_db.sql:/etc/init_single_db.sql
+    command: [mysqld, --init-file=/etc/init_monolith_db.sql]
