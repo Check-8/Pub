@@ -1,0 +1,15 @@
+FROM frolvlad/alpine-oraclejdk8
+
+VOLUME ["/kafka"]
+
+RUN apk add --update bash
+
+ENV KAFKA_HEAP_OPTS -Xmx512m -Xms128m
+ENV KAFKA_VERSION="0.10.0.1" SCALA_VERSION="2.11"
+ENV KAFKA_HOME /kafka_${SCALA_VERSION}-${KAFKA_VERSION}
+
+ADD kafka_${SCALA_VERSION}-${KAFKA_VERSION} /opt
+
+CMD /opt/kafka_start.sh
+
+EXPOSE 9092

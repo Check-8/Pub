@@ -1,0 +1,13 @@
+FROM frolvlad/alpine-oraclejdk8
+
+VOLUME ["/kafka"]
+
+RUN apk add --update bash
+
+ENV KAFKA_HOME /kafka_2.11-0.10.0.1
+
+ADD kafka_2.11-0.10.0.1 /opt
+
+CMD /opt/bin/zookeeper-server-start.sh /opt/config/zookeeper.properties
+
+EXPOSE 2181
