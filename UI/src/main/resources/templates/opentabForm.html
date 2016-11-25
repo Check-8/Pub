@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/web/thymeleaf/layout"
+	layout:decorator="layout">
+<head>
+<title>Open tab</title>
+</head>
+<body>
+	<h1 layout:fragment="header">Open tab</h1>
+	<div layout:fragment="content" class="container">
+		<form action="../opentab/" method="post" role="form">
+			<div class="form-group">
+				<label>Table number</label>
+				<input type="text" th:name="table_number" class="form-control" placeholder="0" />
+			</div>
+			<div class="form-group">
+				<label>Waiter</label>
+				<input type="text" th:name="waiter" class="form-control" placeholder="waiter" />
+			</div>
+			<div class="row">
+				<button type="submit" name="submit" class="btn btn-default">Open tab</button>
+			</div>
+		</form>
+	</div>
+</body>
+</html>

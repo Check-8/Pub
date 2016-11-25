@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:repository="http://www.springframework.org/schema/data/repository"
+
+	xsi:schemaLocation="http://www.springframework.org/schema/beans
+        http://www.springframework.org/schema/beans/spring-beans.xsd
+        http://www.springframework.org/schema/context
+        http://www.springframework.org/schema/context/spring-context.xsd
+		http://www.springframework.org/schema/data/repository
+		http://www.springframework.org/schema/data/repository/spring-repository.xsd">
+
+	<context:annotation-config />
+
+	<bean id="events" class="tab.events.EventsList">
+		<qualifier value="events" />
+	</bean>
+
+	<bean id="commands" class="tab.commands.CommandsList">
+		<qualifier value="commands" />
+	</bean>
+
+	<bean id="producer" class="tab.queue.ProduttoreCodaKafka">
+		<qualifier value="produttoreCoda" />
+	</bean>
+
+	<bean id="consumer" class="tab.queue.ConsumatoreCodaKafka">
+		<qualifier value="consumatoreCoda" />
+	</bean>
+
+	<beans profile="map">
+		<bean id="tabAggregatesMap" class="tab.TabAggregatesMap">
+			<qualifier value="tabAggregates" />
+		</bean>
+
+		<bean id="menuClientF" class="tab.client.MenuClientFile">
+			<qualifier value="menuClient" />
+		</bean>
+	</beans>
+
+	<beans profile="mysql">
+		<bean id="tabAggregates" class="tab.TabAggregatesMySql">
+			<qualifier value="tabAggregates" />
+		</bean>
+
+		<bean id="menuClientE" class="tab.client.MenuClientEureka">
+			<qualifier value="menuClient" />
+		</bean>
+	</beans>
+
+</beans>

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:jpa="http://www.springframework.org/schema/data/jpa" xmlns:tx="http://www.springframework.org/schema/tx"
+	xmlns:repository="http://www.springframework.org/schema/data/repository"
+
+	xsi:schemaLocation="http://www.springframework.org/schema/beans
+        http://www.springframework.org/schema/beans/spring-beans.xsd
+        http://www.springframework.org/schema/context
+        http://www.springframework.org/schema/context/spring-context.xsd
+		http://www.springframework.org/schema/data/repository
+		http://www.springframework.org/schema/data/repository/spring-repository.xsd">
+
+	<context:annotation-config />
+
+	<bean id="consumer" class="chefTodo.queue.ConsumatoreCodaKafka">
+		<qualifier value="consumatoreCoda" />
+	</bean>
+
+	<beans profile="map">
+		<bean id="chefTodo" class="chefTodo.readModel.ChefTodoList">
+			<qualifier value="chefTodo" />
+		</bean>
+	</beans>
+
+	<beans profile="mysql">
+		<bean id="chefTodo" class="chefTodo.readModel.ChefTodoMySql">
+			<qualifier value="chefTodo" />
+		</bean>
+	</beans>
+
+</beans>

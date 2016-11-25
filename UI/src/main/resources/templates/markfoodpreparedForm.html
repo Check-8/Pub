@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/web/thymeleaf/layout"
+	layout:decorator="layout">
+<head>
+<title>Food to prepare</title>
+</head>
+<body>
+	<h1 layout:fragment="header">Food to prepare</h1>
+	<div layout:fragment="content" class="container">
+		<div class="form-group">
+			<label><a href="/ui/">Back to menu</a></label>
+		</div>
+		<div class="form-group" th:if="${groups.empty}">No food to prepare</div>
+		<div class="form-group" th:each="g : ${groups}">
+			<table class="table table-bordered table-striped">
+				<thead>
+					<tr>
+						<td th:text="${'Group: '+g.tab}" colspan="3">Group</td>
+					</tr>
+				</thead>
+				<tbody>
+					<tr th:if="${g.items.empty}">
+						<td colspan="3">No food to prepare</td>
+					</tr>
+					<tr th:each="f,iterStat : ${g.items}">
+						<td th:text="${f.menuNumber}">0</td>
+						<td th:text="${f.description}">Empty</td>
+						<td>
+							<form action="/ui/markfoodprepared/" th:method="post">
+								<input type="hidden" name="id" th:value="${g.tab}" />
+								<button type="submit" name="food_prepared[]" th:value="${f.menuNumber}" class="btn btn-link">Mark prepared</button>
+							</form>
+						</td>
+					</tr>
+				</tbody>
+			</table>
+
+		</div>
+		<div class="row">
+			<button type="submit" name="submit" class="btn btn-default">Mark served</button>
+		</div>
+	</div>
+</body>
+</html>

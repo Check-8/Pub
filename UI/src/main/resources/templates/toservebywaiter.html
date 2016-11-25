@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/web/thymeleaf/layout"
+	layout:decorator="layout">
+<head>
+<title>To serve</title>
+</head>
+<body>
+	<h1 layout:fragment="header">To serve</h1>
+	<div layout:fragment="content" class="container">
+		<div class="form-group">
+			<label th:text="${'Waiter: '+waiter}">Waiter</label>
+		</div>
+		<div class="row" th:if="${items.empty}">Nothing to serve</div>
+		<table class="table table-bordered table-striped" th:each="e,iterStat : ${items.entrySet()}">
+			<thead>
+				<tr>
+					<td colspan="2" th:text="${'Table: '+e.getKey()}">Table</td>
+				</tr>
+				<tr>
+					<td>Menu Number</td>
+					<td>Description</td>
+				</tr>
+			</thead>
+			<tbody>
+				<tr th:each="i,iterStat : ${e.getValue()}">
+					<td th:text="${i.menuNumber}">0</td>
+					<td th:text="${i.description}">Empty</td>
+				</tr>
+			</tbody>
+		</table>
+	</div>
+</body>
+</html>

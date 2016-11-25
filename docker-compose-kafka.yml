@@ -1,0 +1,29 @@
+version: '2'
+services:
+  zookeeper:
+    build:
+      context: kafka
+      dockerfile: Dockerfile.zk
+    expose:
+      - "2181"
+    networks:
+    - kafka_net
+  kafka:
+    build:
+      context: kafka
+      dockerfile: Dockerfile.kafka
+    links:
+      - zookeeper
+    depends_on:
+      - zookeeper
+    networks:
+    - kafka_net
+
+networks:
+  kafka_net:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+      - subnet: 172.22.199.0/24
+        gateway: 172.22.199.1

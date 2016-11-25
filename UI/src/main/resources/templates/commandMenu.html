@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/web/thymeleaf/layout"
+	layout:decorator="layout">
+<head>
+<title>Menu</title>
+</head>
+<body>
+	<h1 layout:fragment="header">Menu</h1>
+	<div layout:fragment="content" class="container">
+
+		<table class="table table-bordered table-striped">
+			<thead>
+				<tr>
+					<td>Comandi</td>
+				</tr>
+			</thead>
+			<tbody>
+				<tr>
+					<td>
+						<a href="/ui/opentab/">Open tab</a>
+					</td>
+				</tr>
+				<tr>
+					<td>
+						<a href="/ui/order/">Place order</a>
+					</td>
+				</tr>
+				<tr>
+					<td>
+						<a href="/ui/waiter/">To serve</a>
+					</td>
+				</tr>
+				<tr>
+					<td>
+						<a href="/ui/markdrinks/">Mark drinks served</a>
+					</td>
+				</tr>
+				<tr>
+					<td>
+						<a href="/ui/markfoodprepared/">Mark food prepared</a>
+					</td>
+				</tr>
+				<tr>
+					<td>
+						<a href="/ui/markfood/">Mark food served</a>
+					</td>
+				</tr>
+				<tr>
+					<td>
+						<a href="/ui/close/">Close tab</a>
+					</td>
+				</tr>
+			</tbody>
+		</table>
+	</div>
+</body>
+</html>
