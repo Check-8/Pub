@@ -2,6 +2,13 @@ package tab.client;
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -9,14 +16,20 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.client.ServiceInstance;
 import org.springframework.cloud.client.loadbalancer.LoadBalancerClient;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.hateoas.MediaTypes;
 import org.springframework.hateoas.hal.Jackson2HalModule;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.netflix.hystrix.contrib.javanica.annotation.HystrixCommand;
 
 import tab.events.OrderedItem;
 
@@ -30,6 +43,9 @@ public class MenuClientEureka implements MenuClient {
 
 	private LoadBalancerClient loadBalancer;
 
+	private Map<Integer, OrderedItem> menuNumber2item;
+	private Lock lock;
+
 	@Autowired
 	public MenuClientEureka(@Value("${menu.service.host:menu}") String menuServiceHost,
 			@Value("${menu.service.port:8080}") long menuServicePort,
@@ -38,6 +54,8 @@ public class MenuClientEureka implements MenuClient {
 		this.menuServiceHost = menuServiceHost;
 		this.menuServicePort = menuServicePort;
 		this.useRibbon = useRibbon;
+		menuNumber2item = new HashMap<>();
+		lock = new ReentrantLock();
 	}
 
 	@Autowired(required = false)
@@ -69,8 +87,43 @@ public class MenuClientEureka implements MenuClient {
 		return url;
 	}
 
+	@Scheduled(fixedDelay = 30000)
+	public void getMenu() {
+		ParameterizedTypeReference<List<OrderedItem>> type = null;
+		type = new ParameterizedTypeReference<List<OrderedItem>>() {
+		};
+		ResponseEntity<List<OrderedItem>> resp = null;
+		try {
+			resp = restTemplate.exchange(MenuURL() + "menu", HttpMethod.GET, null, type);
+			List<OrderedItem> menu = resp.getBody();
+			lock.lock();
+			menuNumber2item = menu.stream().collect(Collectors.toMap(OrderedItem::getMenuNumber, Function.identity()));
+		} catch (RestClientException e) {
+			log.error("Failed to load menu", e);
+		} finally {
+			lock.unlock();
+		}
+	}
+
 	@Override
+	@HystrixCommand(fallbackMethod = "defaultMenuItem")
 	public OrderedItem getMenuItem(Integer menuNumber) {
-		return restTemplate.getForObject(MenuURL() + menuNumber, OrderedItem.class);
+		OrderedItem oi = restTemplate.getForObject(MenuURL() + menuNumber, OrderedItem.class);
+		try {
+			lock.lock();
+			menuNumber2item.put(menuNumber, oi);
+		} finally {
+			lock.unlock();
+		}
+		return oi;
+	}
+
+	public OrderedItem defaultMenuItem(Integer menuNumber) {
+		try {
+			lock.lock();
+			return menuNumber2item.get(menuNumber);
+		} finally {
+			lock.unlock();
+		}
 	}
 }

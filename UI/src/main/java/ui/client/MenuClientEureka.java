@@ -1,8 +1,11 @@
 package ui.client;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,6 +20,8 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
@@ -34,6 +39,9 @@ public class MenuClientEureka implements MenuClient {
 
 	private LoadBalancerClient loadBalancer;
 
+	private List<ItemTodo> oldmenu;
+	private Lock menuLock;
+
 	@Autowired
 	public MenuClientEureka(@Value("${menu.service.host:menu}") String menuServiceHost,
 			@Value("${menu.service.port:8080}") long menuServicePort,
@@ -42,6 +50,8 @@ public class MenuClientEureka implements MenuClient {
 		this.menuServiceHost = menuServiceHost;
 		this.menuServicePort = menuServicePort;
 		this.useRibbon = useRibbon;
+		oldmenu = Collections.emptyList();
+		menuLock = new ReentrantLock();
 	}
 
 	@Autowired(required = false)
@@ -73,13 +83,33 @@ public class MenuClientEureka implements MenuClient {
 		return url;
 	}
 
-	@Override
-	public List<ItemTodo> getMenu() {
+	@Scheduled(fixedDelay = 30000)
+	public void loadMenu() {
 		ParameterizedTypeReference<List<ItemTodo>> type = null;
 		type = new ParameterizedTypeReference<List<ItemTodo>>() {
 		};
 		ResponseEntity<List<ItemTodo>> resp = null;
-		resp = restTemplate.exchange(MenuURL() + "menu", HttpMethod.GET, null, type);
-		return resp.getBody();
+		try {
+			resp = restTemplate.exchange(MenuURL() + "menu", HttpMethod.GET, null, type);
+			menuLock.lock();
+			oldmenu = resp.getBody();
+		} catch (RestClientException e) {
+			log.error("Unable to connect to menu", e);
+		} finally {
+			menuLock.unlock();
+		}
+	}
+
+	@Override
+	public List<ItemTodo> getMenu() {
+		try {
+			menuLock.lock();
+			if (oldmenu.isEmpty())
+				loadMenu();
+		} finally {
+			menuLock.unlock();
+		}
+		return new ArrayList<>(oldmenu);
+
 	}
 }
