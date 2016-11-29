@@ -10,13 +10,16 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.bind.annotation.ResponseStatus;
 
 import tab.MessageDispatcher;
 import tab.client.MenuClient;
@@ -27,6 +30,8 @@ import tab.commands.MarkFoodServed;
 import tab.commands.OpenTab;
 import tab.commands.PlaceOrder;
 import tab.events.OrderedItem;
+import tab.exception.TabException;
+import tab.exception.TabNotOpen;
 
 @Controller
 public class TabController {
@@ -138,6 +143,16 @@ public class TabController {
 		long id = temp.longValue();
 		List<Integer> orderedItem = (List) param.get("food_served[]");
 		markFoodServed(id, orderedItem.toArray(new Integer[0]));
+	}
+
+	@ResponseStatus(value = HttpStatus.NOT_FOUND, reason = "Tab not found, probably not open")
+	@ExceptionHandler(TabNotOpen.class)
+	public void notOpen() {
+	}
+
+	@ResponseStatus(value = HttpStatus.CONFLICT, reason = "Operation could not be done.")
+	@ExceptionHandler(TabException.class)
+	public void conflic() {
 	}
 
 }
