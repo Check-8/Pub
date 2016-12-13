@@ -18,7 +18,7 @@ import openTabs.events.Event;
 
 @SuppressWarnings("rawtypes")
 public class OpenTabsSharedMySql implements ApplyEvent, OpenTabsQueries, ReadModel {
-	private static final String SELECT_ITEM_TODO_BY_TABID = "SELECT menu_number, description, price FROM ordereditem WHERE tab_id=? AND list_name=?;";
+	private static final String SELECT_ITEM_TODO_BY_TABID = "SELECT menu_number, description, price FROM ordereditem WHERE tab_id=? AND list_type=?;";
 
 	private static final String SELECT_TABLETODO_BY_TABID = "SELECT table_number, waiter, open FROM tabs WHERE id=?;";
 
@@ -26,7 +26,7 @@ public class OpenTabsSharedMySql implements ApplyEvent, OpenTabsQueries, ReadMod
 
 	private static final String SELECT_ITEM_TODO_BY_WAITER = "SELECT tt.table_number AS table_number, it.menu_number AS menu_number, it.description AS description, it.price AS price "
 			+ "FROM ordereditem AS it, tabs AS tt "
-			+ "WHERE it.tab_id=tt.id AND it.list_name LIKE \"%TO_SERVE\" AND tt.waiter=? AND tt.open=?;";
+			+ "WHERE it.tab_id=tt.id AND it.list_type LIKE \"%TO_SERVE\" AND tt.waiter=? AND tt.open=?;";
 
 	private static final String SUM_PRICE_BY_TAB = "SELECT SUM(price) AS total FROM ordereditem WHERE tab_id=?;";
 
@@ -100,7 +100,7 @@ public class OpenTabsSharedMySql implements ApplyEvent, OpenTabsQueries, ReadMod
 				PreparedStatement foodToServeStatement = connection.prepareStatement(SELECT_ITEM_TODO_BY_TABID);
 				PreparedStatement inPrepStatement = connection.prepareStatement(SELECT_ITEM_TODO_BY_TABID);) {
 			statement.setInt(1, tableNumber);
-			statement.setBoolean(2, false);
+			statement.setBoolean(2, true);
 
 			try (ResultSet results = statement.executeQuery();) {
 				if (results.next()) {
@@ -181,7 +181,7 @@ public class OpenTabsSharedMySql implements ApplyEvent, OpenTabsQueries, ReadMod
 		try (Connection connection = dataSource.getConnection();
 				PreparedStatement statement = connection.prepareStatement(SUM_PRICE_BY_TABLE_NUMBER);) {
 			statement.setInt(1, tableNumber);
-			statement.setBoolean(2, false);
+			statement.setBoolean(2, true);
 			try (ResultSet results = statement.executeQuery();) {
 				if (results.next()) {
 					Double total = results.getDouble("total");

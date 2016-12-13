@@ -35,7 +35,7 @@ public class ChefTodoSharedMySql implements ApplyEvent, ChefTodoListQueries, Rea
 			Map<Long, TodoListGroup> id2group = new HashMap<>();
 			try (ResultSet results = statement.executeQuery();) {
 				while (results.next()) {
-					long idTab = results.getLong("tab");
+					long idTab = results.getLong("tab_id");
 					TodoListGroup tg = id2group.get(idTab);
 					if (tg == null) {
 						tg = new TodoListGroup(idTab, new ArrayList<>());
