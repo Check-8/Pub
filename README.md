@@ -3,6 +3,11 @@ Lo script `build_all_services` avvia `docker-compose build`.
 Lo script `start_all_services` avvia `docker-compose up -d`.
 Lo script `kill_all_services` avvia `docker-compose kill`.
 
+Lo script `start_all_services` accetta parametri per scegliere in quale configurazione avviare il sistema.
+- Senza parametri: i microservizi si appoggiano a database separati in MySQL;
+- parametro `map`: i microservizi memorizzano i dati in collezioni java. Non scalabile visto che ogni istanza dello stesso microservizio ha dati diversi;
+- parametro `shared`: i microservizi si appoggiano su un database condiviso in MySQL;
+
 L'homepage è raggiungibile su `localhost:8080/ui/`.
 
 Ogni servizio espone le proprie operazioni tramite operazioni REST.
