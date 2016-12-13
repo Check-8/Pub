@@ -28,5 +28,11 @@
 			<qualifier value="chefTodo" />
 		</bean>
 	</beans>
+	
+	<beans profile="shared">
+		<bean id="chefTodo" class="chefTodo.readModel.ChefTodoSharedMySql">
+			<qualifier value="chefTodo" />
+		</bean>
+	</beans>
 
 </beans>

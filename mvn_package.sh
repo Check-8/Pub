@@ -1,4 +1,4 @@
-#!bin/bash
+#!/bin/bash
 
 mvn -f ./ChefTodo/pom.xml package
 mvn -f ./Eureka/pom.xml package

@@ -1,0 +1,75 @@
+version: '2'
+services:
+  chef:
+    build: ChefTodo
+    networks:
+    - kafka_net
+    - db_net
+    - default
+    command: ["-Xmx128m", "-Xms128m", "-jar", "-Dspring.profiles.active=shared", "chef.jar"]
+  opentabs:
+    build: ReadOpenTab
+    networks:
+    - kafka_net
+    - db_net
+    - default
+    command: ["-Xmx128m", "-Xms128m", "-jar", "-Dspring.profiles.active=shared", "opentab.jar"]
+  tabs:
+    build: Tab
+    networks:
+    - kafka_net
+    - db_net
+    - default
+    command: ["-Xmx128m", "-Xms128m", "-jar", "-Dspring.profiles.active=shared", "tab.jar"]
+  ui:
+    build: UI
+    networks:
+    - kafka_net
+    - default
+  menu:
+    build: Menu
+  eureka:
+    build: Eureka
+    ports:
+    - 8761:8761
+    networks:
+    - default
+  zuul:
+    build: Zuul
+    links:
+    - eureka
+    ports:
+    - 8080:8080
+    networks:
+    - kafka_net
+    - default
+  mysql:
+    extends:
+      file: mysql_cfg/mysql-compose.yml
+      service: mysql_base
+    volumes:
+    - data:/var/lib/mysql
+    networks:
+      db_net:
+        aliases:
+        - db
+    command:
+    - mysqld
+    - --init-file=/etc/init_shared_db.sql
+networks:
+  kafka_net:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+      - subnet: 172.22.199.0/24
+        gateway: 172.22.199.1
+  db_net:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+      - subnet: 172.23.199.0/24
+        gateway: 172.23.199.1
+volumes:
+  data:

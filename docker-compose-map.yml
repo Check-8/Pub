@@ -1,0 +1,50 @@
+version: '2'
+services:
+  chef:
+    build: ChefTodo
+    networks:
+    - kafka_net
+    - default
+    command: ["-Xmx128m", "-Xms128m", "-jar", "-Dspring.profiles.active=map", "chef.jar"]
+  opentabs:
+    build: ReadOpenTab
+    networks:
+    - kafka_net
+    - default
+    command: ["-Xmx128m", "-Xms128m", "-jar", "-Dspring.profiles.active=map", "opentab.jar"]
+  tabs:
+    build: Tab
+    networks:
+    - kafka_net
+    - default
+    command: ["-Xmx128m", "-Xms128m", "-jar", "-Dspring.profiles.active=map", "tab.jar"]
+  ui:
+    build: UI
+    networks:
+    - kafka_net
+    - default
+  menu:
+    build: Menu
+  eureka:
+    build: Eureka
+    ports:
+    - 8761:8761
+    networks:
+    - default
+  zuul:
+    build: Zuul
+    links:
+    - eureka
+    ports:
+    - 8080:8080
+    networks:
+    - kafka_net
+    - default
+networks:
+  kafka_net:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+      - subnet: 172.22.199.0/24
+        gateway: 172.22.199.1
