@@ -50,9 +50,7 @@ services:
       db_net:
         aliases:
         - db
-    command:
-    - mysqld
-    - --init-file=/etc/init_monolith_db.sql
+    command: [mysqld, --init-file=/etc/init_monolith_db.sql]
 networks:
   kafka_net:
     driver: bridge

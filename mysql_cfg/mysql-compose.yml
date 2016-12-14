@@ -3,6 +3,7 @@ services:
   mysql_base:
     image: mysql/mysql-server:5.7.14
     mem_limit: 512m
+    user: mysql
     environment:
     - MYSQL_ROOT_PASSWORD=pwd_root
     volumes:
