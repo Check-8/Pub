@@ -1,6 +1,6 @@
-FROM frolvlad/alpine-oraclejdk8
+FROM adoptopenjdk:11.0.6_10-jre-hotspot
 
-ENTRYPOINT ["/usr/bin/java"]
+ENTRYPOINT ["java"]
 
 CMD ["-Xmx128m", "-Xms128m", "-jar", "ui.jar"]
 

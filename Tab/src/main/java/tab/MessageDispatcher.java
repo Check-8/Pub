@@ -55,7 +55,7 @@ public class MessageDispatcher implements Subscriber {
 
 	@Override
 	public void onMessage(Command command) {
-		logger.debug("Ricevuto comando: " + command.getClass() + " con ID: " + command.getId());
+		logger.debug("Ricevuto comando: {} con ID: {}", command.getClass(), command.getId());
 		receiveCommand(command);
 	}
 
@@ -75,7 +75,7 @@ public class MessageDispatcher implements Subscriber {
 		try {
 			ee = tab.handle(command);
 		} catch (TabException e) {
-			logger.info("Comando: " + command.getClass() + " su ID: " + command.getId() + " " + e.getMessage());
+			logger.info("Comando: {} su ID: {} {}",command.getClass(), command.getId(), e.getMessage());
 			logger.error(e.getClass().toString(), e);
 			throw e;
 		}

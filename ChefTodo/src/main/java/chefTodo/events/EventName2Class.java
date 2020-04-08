@@ -5,19 +5,31 @@ import java.io.InputStream;
 import java.util.Properties;
 
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Component;
 
-import com.google.common.io.Resources;
+import javax.annotation.PostConstruct;
+
 
 @Component
 @Qualifier("eventname2class")
 public class EventName2Class {
+
+	@Value("classpath:eventname.properties")
+	private Resource eventnameProperties;
+
 	private Properties properties;
 
 	private String basePackage;
 
 	public EventName2Class() {
-		try (InputStream inStream = Resources.getResource("eventname.properties").openStream();) {
+
+	}
+
+	@PostConstruct
+	public void init() {
+		try (InputStream inStream = eventnameProperties.getInputStream()) {
 			properties = new Properties();
 			properties.load(inStream);
 			basePackage = properties.getProperty("base_package");

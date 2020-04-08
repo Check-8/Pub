@@ -1,5 +1,14 @@
-package menu.loader;
+package menu.service.impl;
 
+import menu.OrderedItem;
+import menu.service.MenuLoader;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.PathResource;
+import org.springframework.core.io.Resource;
+
+import javax.annotation.PostConstruct;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Collections;
@@ -7,19 +16,13 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Scanner;
 
-import javax.annotation.PostConstruct;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.google.common.io.Resources;
-
-import menu.OrderedItem;
-
 public class MenuFileLoader implements MenuLoader {
 	private Logger logger = LoggerFactory.getLogger(MenuLoader.class);
 
 	private Map<Integer, OrderedItem> number2item;
+
+	@Value("classpath:menu.txt")
+	private Resource menu;
 
 	public MenuFileLoader() {
 		number2item = new HashMap<>();
@@ -28,7 +31,8 @@ public class MenuFileLoader implements MenuLoader {
 	@Override
 	@PostConstruct
 	public void init() {
-		try (InputStream is = Resources.getResource("menu.txt").openStream(); Scanner scan = new Scanner(is);) {
+
+		try (InputStream is = menu.getInputStream(); Scanner scan = new Scanner(is);) {
 			while (scan.hasNextLine()) {
 				String nextLine = scan.nextLine();
 				String[] split = nextLine.split(",");
@@ -41,7 +45,7 @@ public class MenuFileLoader implements MenuLoader {
 				logger.debug(oi.toString());
 			}
 		} catch (IOException e) {
-			e.printStackTrace();
+			logger.error("Impossible to parse menu", e);
 		}
 	}
 

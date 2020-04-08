@@ -22,10 +22,13 @@ import com.fasterxml.jackson.core.JsonGenerationException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.io.Resources;
 
 import chefTodo.events.Event;
 import chefTodo.events.EventName2Class;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.Resource;
+
+import javax.annotation.PostConstruct;
 
 public class ConsumatoreCodaKafka extends ConsumatoreCoda {
 	private static Logger logger = LoggerFactory.getLogger(ConsumatoreCodaKafka.class);
@@ -34,13 +37,21 @@ public class ConsumatoreCodaKafka extends ConsumatoreCoda {
 	private ObjectMapperHolder omh;
 	private ExecutorService exec;
 
+	@Value("classpath:consumer.properties")
+	private Resource consumerProperties;
+
 	@Autowired
 	@Qualifier("eventname2class")
 	private EventName2Class en2c;
 
 	public ConsumatoreCodaKafka() {
+
+	}
+
+	@PostConstruct
+	public void init() {
 		Properties prop = new Properties();
-		try (InputStream is = Resources.getResource("consumer.properties").openStream()) {
+		try (InputStream is = consumerProperties.getInputStream()) {
 			prop.load(is);
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -76,14 +87,10 @@ public class ConsumatoreCodaKafka extends ConsumatoreCoda {
 							eventClass = en2c.name2class((String) map.get("eventName"));
 							if (eventClass != null)
 								event = mapper.convertValue(map, eventClass);
-						} catch (JsonGenerationException e) {
-							e.printStackTrace();
-						} catch (JsonMappingException e) {
-							e.printStackTrace();
 						} catch (IOException e) {
-							e.printStackTrace();
+							logger.error("Error during parsing", e);
 						} catch (ClassNotFoundException e) {
-							logger.debug("Evento non trovato: " + e.getMessage());
+							logger.debug("Event not found: {}", e.getMessage());
 						}
 						if (event != null)
 							for (Subscriber sub : getSubscriber()) {

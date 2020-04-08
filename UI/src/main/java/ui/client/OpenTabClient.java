@@ -1,10 +1,7 @@
 package ui.client;
 
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,18 +10,18 @@ import org.springframework.cloud.client.ServiceInstance;
 import org.springframework.cloud.client.loadbalancer.LoadBalancerClient;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.hateoas.MediaTypes;
-import org.springframework.hateoas.hal.Jackson2HalModule;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.web.client.RestTemplate;
-
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
-
 import ui.ItemTodo;
 import ui.TableTodo;
+
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 
 public class OpenTabClient implements OpenTabInteface {
 	private final Logger log = LoggerFactory.getLogger(OpenTabClient.class);
@@ -37,7 +34,7 @@ public class OpenTabClient implements OpenTabInteface {
 	private LoadBalancerClient loadBalancer;
 
 	@Autowired
-	public OpenTabClient(@Value("${open.service.host:opentab}") String openServiceHost,
+	public OpenTabClient(@Value("${open.service.host:opentabs}") String openServiceHost,
 			@Value("${open.service.port:8080}") long openServicePort,
 			@Value("${ribbon.eureka.enabled:false}") boolean useRibbon) {
 		this.restTemplate = getRestTemplate();
@@ -54,7 +51,6 @@ public class OpenTabClient implements OpenTabInteface {
 	protected RestTemplate getRestTemplate() {
 		ObjectMapper mapper = new ObjectMapper();
 		mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-		mapper.registerModule(new Jackson2HalModule());
 
 		MappingJackson2HttpMessageConverter converter = new MappingJackson2HttpMessageConverter();
 		converter.setSupportedMediaTypes(Arrays.asList(MediaTypes.HAL_JSON));

@@ -1,13 +1,9 @@
 package tab.queue;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.Arrays;
-import java.util.Map;
-import java.util.Properties;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.PropertyAccessor;
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
@@ -15,23 +11,36 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
-
-import com.fasterxml.jackson.annotation.PropertyAccessor;
-import com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility;
-import com.fasterxml.jackson.core.JsonGenerationException;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.JsonMappingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.io.Resources;
-
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.Resource;
 import tab.events.Event;
 import tab.events.EventName2Class;
+
+import javax.annotation.PostConstruct;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class ConsumatoreCodaKafka extends ConsumatoreCoda {
 	private static Logger logger = LoggerFactory.getLogger(ConsumatoreCodaKafka.class);
 
+	private static ObjectMapper objectMapper;
+
+	static {
+		objectMapper = new ObjectMapper();
+		objectMapper.setVisibility(PropertyAccessor.ALL, JsonAutoDetect.Visibility.NONE);
+		objectMapper.setVisibility(PropertyAccessor.FIELD, JsonAutoDetect.Visibility.ANY);
+		objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+	}
+
+	@Value("classpath:consumer.properties")
+	private Resource consumerResource;
+
 	private KafkaConsumer<String, String> consumer;
-	private ObjectMapperHolder omh;
 	private ExecutorService exec;
 
 	@Autowired
@@ -39,17 +48,21 @@ public class ConsumatoreCodaKafka extends ConsumatoreCoda {
 	private EventName2Class en2c;
 
 	public ConsumatoreCodaKafka() {
+
+	}
+
+	@PostConstruct
+	public void init() {
 		Properties prop = new Properties();
-		try (InputStream is = Resources.getResource("consumer.properties").openStream()) {
+		try (InputStream is = consumerResource.getInputStream()) {
 			prop.load(is);
 		} catch (IOException e) {
-			e.printStackTrace();
+			logger.error("Could not load consumer configuration", e);
 		}
 		consumer = new KafkaConsumer<>(prop);
-		consumer.subscribe(Arrays.asList("TAB_EVENT"));
+		consumer.subscribe(List.of("TAB_EVENT"));
 		exec = Executors.newSingleThreadExecutor();
 		exec.execute(new Consumatore());
-		omh = new ObjectMapperHolder();
 	}
 
 	private class Consumatore implements Runnable {
@@ -69,18 +82,13 @@ public class ConsumatoreCodaKafka extends ConsumatoreCoda {
 						Event event = null;
 						Map<String, Object> map = null;
 
-						ObjectMapper mapper = omh.getMapper();
 						try {
-							map = mapper.readValue(json, Map.class);
+							map = objectMapper.readValue(json, Map.class);
 							Class<? extends Event> eventClass = null;
 							eventClass = en2c.name2class((String) map.get("eventName"));
-							event = mapper.convertValue(map, eventClass);
-						} catch (JsonGenerationException e) {
-							e.printStackTrace();
-						} catch (JsonMappingException e) {
-							e.printStackTrace();
+							event = objectMapper.convertValue(map, eventClass);
 						} catch (IOException e) {
-							e.printStackTrace();
+							logger.error("Error while parsing message", e);
 						}
 
 						for (Subscriber sub : getSubscriber()) {
@@ -94,20 +102,5 @@ public class ConsumatoreCodaKafka extends ConsumatoreCoda {
 			}
 		}
 
-	}
-
-	private class ObjectMapperHolder {
-		private ObjectMapper objectMapper;
-
-		public ObjectMapperHolder() {
-			objectMapper = new ObjectMapper();
-			objectMapper.setVisibility(PropertyAccessor.ALL, Visibility.NONE);
-			objectMapper.setVisibility(PropertyAccessor.FIELD, Visibility.ANY);
-			objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-		}
-
-		public ObjectMapper getMapper() {
-			return objectMapper;
-		}
 	}
 }

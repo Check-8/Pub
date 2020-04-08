@@ -1,13 +1,5 @@
 package ui.controller;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-
-import javax.servlet.http.HttpServletRequest;
-
 import org.apache.commons.lang.NullArgumentException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,7 +10,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.ModelAndView;
-
 import ui.ItemTodo;
 import ui.TableTodo;
 import ui.client.ChefTodoInterface;
@@ -26,10 +17,17 @@ import ui.client.MenuClient;
 import ui.client.OpenTabInteface;
 import ui.client.TabsInterface;
 
+import javax.servlet.http.HttpServletRequest;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+
 @Controller
 public class UIController {
 
-	private Logger logger = LoggerFactory.getLogger(UIController.class);
+	private static final Logger logger = LoggerFactory.getLogger(UIController.class);
 
 	@Autowired
 	@Qualifier("tabsClient")
@@ -49,22 +47,19 @@ public class UIController {
 
 	@RequestMapping(value = "/", method = RequestMethod.GET)
 	public ModelAndView commandMenu() {
-		ModelAndView mav = new ModelAndView("commandMenu");
-		return mav;
+		return new ModelAndView("commandMenu");
 	}
 
 	@RequestMapping(value = "/opentab/", method = RequestMethod.GET)
 	public ModelAndView openTabForm() {
-		ModelAndView mav = new ModelAndView("opentabForm");
-		return mav;
+		return new ModelAndView("opentabForm");
 	}
 
 	@RequestMapping(value = "/opentab/", method = RequestMethod.POST)
 	public ModelAndView openTabForm(@RequestParam(name = "table_number") int tableNumber,
 			@RequestParam(name = "waiter") String waiter) {
 		tabs.openTab(tableNumber, waiter);
-		ModelAndView mav = new ModelAndView("opentabForm");
-		return mav;
+		return new ModelAndView("opentabForm");
 	}
 
 	@RequestMapping(value = "/close/", method = RequestMethod.GET)
@@ -159,8 +154,7 @@ public class UIController {
 
 	@RequestMapping(value = "/waiter/", method = RequestMethod.GET)
 	public ModelAndView chooseWaiter() {
-		ModelAndView mav = new ModelAndView("choosewaiter");
-		return mav;
+		return new ModelAndView("choosewaiter");
 	}
 
 	@RequestMapping(value = "/toserve/", method = RequestMethod.GET)
@@ -194,7 +188,7 @@ public class UIController {
 		String idString = request.getParameter("id");
 		if (idString == null)
 			throw new NullPointerException("ID can't be null");
-		Long id = Long.parseLong(idString);
+		long id = Long.parseLong(idString);
 
 		String tableNumberString = request.getParameter("table_number");
 		if (tableNumberString == null)
@@ -205,7 +199,7 @@ public class UIController {
 		for (Entry<String, String[]> entry : param.entrySet()) {
 			if (entry.getKey().startsWith("quantity_")) {
 				Integer menuNumber = Integer.parseInt(entry.getKey().substring(9).trim());
-				Integer times = Integer.parseInt(entry.getValue()[0]);
+				int times = Integer.parseInt(entry.getValue()[0]);
 				list.addAll(Collections.nCopies(times, menuNumber));
 			}
 		}

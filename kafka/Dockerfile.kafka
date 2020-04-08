@@ -1,8 +1,8 @@
-FROM frolvlad/alpine-oraclejdk8
+FROM adoptopenjdk:8u242-b08-jre-hotspot-bionic
 
 VOLUME ["/kafka"]
 
-RUN apk add --update bash
+RUN apt-get update && apt-get install bash
 
 ENV KAFKA_HEAP_OPTS -Xmx512m -Xms128m
 ENV KAFKA_VERSION="0.10.0.1" SCALA_VERSION="2.11"

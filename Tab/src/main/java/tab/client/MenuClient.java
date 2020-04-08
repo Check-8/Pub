@@ -4,6 +4,6 @@ import tab.events.OrderedItem;
 
 public interface MenuClient {
 
-	public OrderedItem getMenuItem(Integer menuNumber);
+	OrderedItem getMenuItem(Integer menuNumber);
 
 }

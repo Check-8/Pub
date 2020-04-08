@@ -40,6 +40,10 @@ services:
     networks:
     - kafka_net
     - default
+  mongo:
+    image: mongo:3-xenial
+    networks:
+      - default
 networks:
   kafka_net:
     driver: bridge

@@ -4,22 +4,35 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Properties;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Component;
 
-import com.google.common.io.Resources;
+import javax.annotation.PostConstruct;
 
 @Component
 @Qualifier("eventname2class")
 public class EventName2Class {
+	private static final Logger logger = LoggerFactory.getLogger(EventName2Class.class);
+
+	@Value("classpath:eventname.properties")
+	private Resource eventnamesResource;
+
 	private Properties properties;
 
 	public EventName2Class() {
-		try (InputStream inStream = Resources.getResource("eventname.properties").openStream();) {
+	}
+
+	@PostConstruct
+	public void init() {
+		try (InputStream inStream = eventnamesResource.getInputStream()) {
 			properties = new Properties();
 			properties.load(inStream);
 		} catch (IOException e) {
-			e.printStackTrace();
+			logger.error("Could not load configuration", e);
 		}
 	}
 
