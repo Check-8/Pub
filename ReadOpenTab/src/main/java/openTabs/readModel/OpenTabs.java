@@ -1,12 +1,5 @@
 package openTabs.readModel;
 
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.stream.Collectors;
-
 import openTabs.ApplyEvent;
 import openTabs.events.DrinksOrdered;
 import openTabs.events.DrinksServed;
@@ -18,175 +11,300 @@ import openTabs.events.OrderedItem;
 import openTabs.events.TabClosed;
 import openTabs.events.TabOpened;
 
-@SuppressWarnings("rawtypes")
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
 public class OpenTabs implements ApplyEvent, OpenTabsQueries, ReadModel {
-	private final Map<Class<? extends Event>, ApplyEvent> applier;
+    private final List<ApplyEvent> appliers;
+    private final Map<Long, LockAndTableTodo> todoByTab;
 
-	private Map<Long, TableTodo> todoByTab;
+    public OpenTabs() {
+        appliers = List.of(new TabOpenedApplier(), new FoodOrderedApplier(), new DrinksOrderedApplier(),
+                           new FoodPreparedApplier(), new FoodServedApplier(), new DrinksServedApplier(),
+                           new TabClosedApplier());
 
-	public OpenTabs() {
-		Map<Class<? extends Event>, ApplyEvent> aTemp = new HashMap<>();
-		aTemp.put(TabOpened.class, new TabOpenedApplier());
-		aTemp.put(FoodOrdered.class, new FoodOrderedApplier());
-		aTemp.put(DrinksOrdered.class, new DrinksOrderedApplier());
-		aTemp.put(FoodPrepared.class, new FoodPreparedApplier());
-		aTemp.put(FoodServed.class, new FoodServedApplier());
-		aTemp.put(DrinksServed.class, new DrinksServedApplier());
-		aTemp.put(TabClosed.class, new TabClosedApplier());
-		applier = Collections.unmodifiableMap(aTemp);
+        todoByTab = new ConcurrentHashMap<>();
+    }
 
-		todoByTab = new HashMap<>();
-	}
+    @Override
+    public boolean applies(Event e) {
+        return true;
+    }
 
-	private class TabOpenedApplier implements ApplyEvent<TabOpened> {
-		@Override
-		public void apply(TabOpened event) {
-			TableTodo tt = new TableTodo(event.getId(), event.getTableNumber(), event.getWaiter());
-			synchronized (todoByTab) {
-				todoByTab.put(event.getId(), tt);
-			}
-		}
-	}
+    private class TabOpenedApplier implements ApplyEvent {
 
-	private class FoodOrderedApplier implements ApplyEvent<FoodOrdered> {
-		@Override
-		public void apply(FoodOrdered event) {
-			synchronized (todoByTab) {
-				TableTodo tt = todoByTab.get(event.getId());
-				for (OrderedItem oi : event.getItems()) {
-					ItemTodo item = new ItemTodo(oi.getMenuNumber(), oi.getDescription(), oi.getPrice());
-					tt.addInPreparation(item);
-				}
-			}
-		}
-	}
+        @Override
+        public boolean applies(Event e) {
+            return e instanceof TabOpened;
+        }
 
-	private class DrinksOrderedApplier implements ApplyEvent<DrinksOrdered> {
-		@Override
-		public void apply(DrinksOrdered event) {
-			synchronized (todoByTab) {
-				TableTodo tt = todoByTab.get(event.getId());
-				for (OrderedItem oi : event.getItems()) {
-					ItemTodo item = new ItemTodo(oi.getMenuNumber(), oi.getDescription(), oi.getPrice());
-					tt.addDrinkToServe(item);
-				}
-			}
-		}
-	}
+        @Override
+        public void apply(Event event) {
+            TabOpened t = (TabOpened) event;
+            TableTodo tt = new TableTodo(t.getId(), t.getTableNumber(), t.getWaiter());
+            todoByTab.put(event.getId(), LockAndTableTodo.lockAndTable(tt));
+        }
+    }
 
-	private class FoodPreparedApplier implements ApplyEvent<FoodPrepared> {
-		@Override
-		public void apply(FoodPrepared event) {
-			synchronized (todoByTab) {
-				TableTodo tt = todoByTab.get(event.getId());
-				for (Integer num : event.getMenuItems()) {
-					ItemTodo item = tt.removeByMenuNumberInPreparation(num);
-					tt.addFoodToServe(item);
-				}
-			}
-		}
-	}
+    private class FoodOrderedApplier implements ApplyEvent {
 
-	private class FoodServedApplier implements ApplyEvent<FoodServed> {
-		@Override
-		public void apply(FoodServed event) {
-			synchronized (todoByTab) {
-				TableTodo tt = todoByTab.get(event.getId());
-				for (Integer num : event.getMenuItems()) {
-					tt.removeByMenuNumberFoodToServe(num);
-				}
-			}
-		}
-	}
+        @Override
+        public boolean applies(Event e) {
+            return e instanceof FoodOrdered;
+        }
 
-	private class DrinksServedApplier implements ApplyEvent<DrinksServed> {
-		@Override
-		public void apply(DrinksServed event) {
-			synchronized (todoByTab) {
-				TableTodo tt = todoByTab.get(event.getId());
-				for (Integer num : event.getMenuItems()) {
-					tt.removeByMenuNumberDrinkToServe(num);
-				}
-			}
-		}
-	}
+        @Override
+        public void apply(Event event) {
+            FoodOrdered f = (FoodOrdered) event;
+            LockAndTableTodo ltt = todoByTab.get(f.getId());
+            TableTodo tt = ltt.getTableTodo();
+            ltt.getLock()
+               .lock();
+            try {
+                for (OrderedItem oi : f.getItems()) {
+                    ItemTodo item = new ItemTodo(oi.getMenuNumber(), oi.getDescription(), oi.getPrice());
+                    tt.addInPreparation(item);
+                }
+            } finally {
+                ltt.getLock()
+                   .unlock();
+            }
+        }
+    }
 
-	private class TabClosedApplier implements ApplyEvent<TabClosed> {
-		@Override
-		public void apply(TabClosed event) {
-			synchronized (todoByTab) {
-				TableTodo tt = todoByTab.get(event.getId());
-				tt.setAmountPaid(event.getAumountPaid());
-				tt.setToPay(event.getOrderValue());
-				tt.setTip(event.getTipValue());
-				tt.setClosed(true);
-			}
-		}
-	}
+    private class DrinksOrderedApplier implements ApplyEvent {
 
-	@SuppressWarnings("unchecked")
-	@Override
-	public void apply(Event event) {
-		if (applier.containsKey(event.getClass())) {
-			applier.get(event.getClass()).apply(event);
-		} else {
-			throw new IllegalArgumentException("Event not supported: " + event.getClass());
-		}
-	}
+        @Override
+        public boolean applies(Event e) {
+            return e instanceof DrinksOrdered;
+        }
 
-	@Override
-	public TableTodo getByTab(long idTab) {
-		synchronized (todoByTab) {
-			TableTodo tt = todoByTab.get(idTab);
-			TableTodo copy = tt.clone();
-			return copy;
-		}
-	}
+        @Override
+        public void apply(Event event) {
+            DrinksOrdered d = (DrinksOrdered) event;
+            LockAndTableTodo ltt = todoByTab.get(d.getId());
+            TableTodo tt = ltt.getTableTodo();
+            ltt.getLock()
+               .lock();
+            try {
+                for (OrderedItem oi : d.getItems()) {
+                    ItemTodo item = new ItemTodo(oi.getMenuNumber(), oi.getDescription(), oi.getPrice());
+                    tt.addDrinkToServe(item);
+                }
+            } finally {
+                ltt.getLock()
+                   .unlock();
+            }
+        }
+    }
 
-	@Override
-	public TableTodo getOpenByTableNumber(int tableNumber) {
-		synchronized (todoByTab) {
-			Optional<TableTodo> ott = todoByTab.values().stream()
-					.filter(t -> t.getTableNumber() == tableNumber && !t.isClosed()).findFirst();
-			if (ott.isPresent())
-				return ott.get().clone();
-			else
-				return null;
-		}
-	}
+    private class FoodPreparedApplier implements ApplyEvent {
 
-	@Override
-	public Map<Integer, List<ItemTodo>> getTodoListForWaiter(String waiter) {
-		synchronized (todoByTab) {
-			Map<Integer, List<ItemTodo>> map = todoByTab.values().stream().filter(t -> t.getWaiter().equals(waiter))
-					.collect(Collectors.toMap(t -> t.getTableNumber(), t -> t.getToServe()));
-			return map;
-		}
-	}
+        @Override
+        public boolean applies(Event e) {
+            return e instanceof FoodPrepared;
+        }
 
-	private Double getToPay(TableTodo tt) {
-		if (tt == null)
-			return null;
-		double total = 0;
-		Optional<Double> temp = tt.getDrinkToServe().stream().map(it -> it.getPrice()).reduce((u, v) -> u + v);
-		if (temp.isPresent())
-			total += temp.get();
-		temp = tt.getFoodToServe().stream().map(it -> it.getPrice()).reduce((u, v) -> u + v);
-		if (temp.isPresent())
-			total += temp.get();
-		temp = tt.getInPreparation().stream().map(it -> it.getPrice()).reduce((u, v) -> u + v);
-		if (temp.isPresent())
-			total += temp.get();
-		return total;
-	}
+        @Override
+        public void apply(Event event) {
+            FoodPrepared f = (FoodPrepared) event;
+            LockAndTableTodo ltt = todoByTab.get(f.getId());
+            TableTodo tt = ltt.getTableTodo();
+            ltt.getLock()
+               .lock();
+            try {
+                for (Integer num : f.getMenuItems()) {
+                    ItemTodo item = tt.removeByMenuNumberInPreparation(num);
+                    tt.addFoodToServe(item);
+                }
+            } finally {
+                ltt.getLock()
+                   .unlock();
+            }
+        }
+    }
 
-	public Double getPriceToPayByTab(long idTab) {
-		TableTodo tt = getByTab(idTab);
-		return getToPay(tt);
-	}
+    private class FoodServedApplier implements ApplyEvent {
 
-	public Double getPriceToPayByTableNumber(int tableNumber) {
-		TableTodo tt = getOpenByTableNumber(tableNumber);
-		return getToPay(tt);
-	}
+        @Override
+        public boolean applies(Event e) {
+            return e instanceof FoodServed;
+        }
+
+        @Override
+        public void apply(Event event) {
+            FoodServed f = (FoodServed) event;
+            LockAndTableTodo ltt = todoByTab.get(f.getId());
+            TableTodo tt = ltt.getTableTodo();
+            ltt.getLock()
+               .lock();
+            try {
+                for (Integer num : f.getMenuItems()) {
+                    ItemTodo servedItem = tt.removeByMenuNumberFoodToServe(num);
+                    tt.addServed(servedItem);
+                }
+            } finally {
+                ltt.getLock()
+                   .unlock();
+            }
+        }
+    }
+
+    private class DrinksServedApplier implements ApplyEvent {
+
+        @Override
+        public boolean applies(Event e) {
+            return e instanceof DrinksServed;
+        }
+
+        @Override
+        public void apply(Event event) {
+            DrinksServed d = (DrinksServed) event;
+            LockAndTableTodo ltt = todoByTab.get(d.getId());
+            TableTodo tt = ltt.getTableTodo();
+            ltt.getLock()
+               .lock();
+            try {
+                for (Integer num : d.getMenuItems()) {
+                    ItemTodo servedItem = tt.removeByMenuNumberDrinkToServe(num);
+                    tt.addServed(servedItem);
+                }
+            } finally {
+                ltt.getLock()
+                   .unlock();
+            }
+        }
+    }
+
+    private class TabClosedApplier implements ApplyEvent {
+
+        @Override
+        public boolean applies(Event e) {
+            return e instanceof TabClosed;
+        }
+
+        @Override
+        public void apply(Event event) {
+            TabClosed t = (TabClosed) event;
+            LockAndTableTodo ltt = todoByTab.get(t.getId());
+            TableTodo tt = ltt.getTableTodo();
+            ltt.getLock()
+               .lock();
+            try {
+                tt.setAmountPaid(t.getAmountPaid());
+                tt.setToPay(t.getOrderValue());
+                tt.setTip(t.getTipValue());
+                tt.setClosed(true);
+            } finally {
+                ltt.getLock()
+                   .unlock();
+            }
+        }
+    }
+
+    @Override
+    public void apply(Event event) {
+        appliers.stream()
+                .filter((applier) -> applier.applies(event))
+                .findAny()
+                .orElseThrow(() -> new IllegalArgumentException("Event not supported: " + event.getClass()))
+                .apply(event);
+    }
+
+    @Override
+    public TableTodo getByTab(long idTab) {
+        LockAndTableTodo ltt = todoByTab.get(idTab);
+        TableTodo tt = ltt.getTableTodo();
+        ltt.getLock()
+           .lock();
+        try {
+            return tt.clone();
+        } finally {
+            ltt.getLock()
+               .unlock();
+        }
+    }
+
+    private Stream<TableTodo> getStreamByParams(QueryParams params) {
+        return todoByTab.values()
+                        .stream()
+                        .map(LockAndTableTodo::getTableTodo)
+                        .filter(tt -> params.getOpen().equals(!tt.isClosed())
+                                && params.getWaiter().map(w -> w.equalsIgnoreCase(tt.getWaiter())).orElse(true)
+                                && params.getTableNumber().map(t -> t.equals(tt.getTableNumber())).orElse(true))
+                        .map(TableTodo::clone);
+    }
+
+    @Override
+    public List<TableTodo> getByParams(QueryParams params) {
+        return getStreamByParams(params).collect(Collectors.toList());
+    }
+
+    @Override
+    public TableTodo getOpenByTableNumber(int tableNumber) {
+        QueryParams qp = new QueryParams();
+        qp.setTableNumber(tableNumber);
+        return getStreamByParams(qp)
+                .findAny()
+                .map(TableTodo::clone)
+                .orElse(null);
+    }
+
+    @Override
+    public Map<Integer, List<ItemTodo>> getTodoListForWaiter(String waiter) {
+        QueryParams qp = new QueryParams();
+        qp.setWaiter(waiter);
+        return getStreamByParams(qp)
+                .collect(Collectors.toMap(TableTodo::getTableNumber, TableTodo::getToServe));
+    }
+
+    private Double getToPay(TableTodo tt) {
+        if (tt == null)
+            return null;
+
+        return tt.getAllItems()
+                 .stream()
+                 .map(ItemTodo::getPrice)
+                 .reduce(Double::sum)
+                 .orElse(0d);
+    }
+
+    @Override
+    public Double getPriceToPayByTab(long idTab) {
+        TableTodo tt = getByTab(idTab);
+        return getToPay(tt);
+    }
+
+    @Override
+    public Double getPriceToPayByTableNumber(int tableNumber) {
+        TableTodo tt = getOpenByTableNumber(tableNumber);
+        return getToPay(tt);
+    }
+
+    private static class LockAndTableTodo {
+        private final Lock lock;
+        private final TableTodo tableTodo;
+
+        public LockAndTableTodo(Lock lock, TableTodo tableTodo) {
+            this.lock = lock;
+            this.tableTodo = tableTodo;
+        }
+
+        public Lock getLock() {
+            return lock;
+        }
+
+        public TableTodo getTableTodo() {
+            return tableTodo;
+        }
+
+        public static LockAndTableTodo lockAndTable(TableTodo tt) {
+            return new LockAndTableTodo(new ReentrantLock(), tt);
+        }
+    }
 }

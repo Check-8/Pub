@@ -1,15 +1,5 @@
 package tab.aggregate;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.stream.Collectors;
-
 import tab.commands.CloseTab;
 import tab.commands.Command;
 import tab.commands.MarkDrinksServed;
@@ -33,249 +23,335 @@ import tab.exception.NotEnough;
 import tab.exception.NotEverythingServed;
 import tab.exception.TabNotOpen;
 
-@SuppressWarnings("rawtypes")
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
+
 public class TabAggregateMem implements TabAggregate {
 
-	private final Map<Class<? extends Command>, CommandHandler> handlers;
-	private final Map<Class<? extends Event>, ApplyEvent> applier;
+    private final List<CommandHandler> handlers;
+    private final List<ApplyEvent> applier;
 
-	private List<OrderedItem> outstandingDrinks;
-	private List<OrderedItem> outstandingFood;
-	private List<OrderedItem> preparedFood;
-	private boolean open;
-	private double servedItemsValue;
+    private final List<OrderedItem> outstandingDrinks;
+    private final List<OrderedItem> outstandingFood;
+    private final List<OrderedItem> preparedFood;
+    private boolean open;
+    private double servedItemsValue;
 
-	public TabAggregateMem() {
-		Map<Class<? extends Command>, CommandHandler> cTemp = new HashMap<>();
-		cTemp.put(OpenTab.class, new OpenTabHandler());
-		cTemp.put(PlaceOrder.class, new PlaceOrderHandler());
-		cTemp.put(MarkDrinksServed.class, new MarkDrinksServedHandler());
-		cTemp.put(MarkFoodPrepared.class, new MarkFoodPreparedHandler());
-		cTemp.put(MarkFoodServed.class, new MarkFoodServedHandler());
-		cTemp.put(CloseTab.class, new CloseTabHandler());
-		handlers = Collections.unmodifiableMap(cTemp);
+    public TabAggregateMem() {
+        handlers = List.of(new OpenTabHandler(), new PlaceOrderHandler(),
+                           new MarkDrinksServedHandler(), new MarkFoodPreparedHandler(),
+                           new MarkFoodServedHandler(), new CloseTabHandler());
 
-		Map<Class<? extends Event>, ApplyEvent> aTemp = new HashMap<>();
-		aTemp.put(TabOpened.class, new TabOpenedApplier());
-		aTemp.put(DrinksOrdered.class, new DrinksOrderedApplier());
-		aTemp.put(DrinksServed.class, new DrinksServedApplier());
-		aTemp.put(FoodOrdered.class, new FoodOrderedApplier());
-		aTemp.put(FoodPrepared.class, new FoodPreparedApplier());
-		aTemp.put(FoodServed.class, new FoodServedApplier());
-		aTemp.put(TabClosed.class, new TabClosedApplier());
-		applier = Collections.unmodifiableMap(aTemp);
+        applier = List.of(new TabOpenedApplier(), new DrinksOrderedApplier(),
+                          new DrinksServedApplier(), new FoodOrderedApplier(),
+                          new FoodPreparedApplier(), new FoodServedApplier(),
+                          new TabClosedApplier());
 
-		open = false;
-		servedItemsValue = 0;
-		outstandingDrinks = new ArrayList<>();
-		outstandingFood = new ArrayList<>();
-		preparedFood = new ArrayList<>();
-	}
+        open = false;
+        servedItemsValue = 0;
+        outstandingDrinks = new ArrayList<>();
+        outstandingFood = new ArrayList<>();
+        preparedFood = new ArrayList<>();
+    }
 
-	private class OpenTabHandler implements CommandHandler<OpenTab> {
-		@Override
-		public Collection<Event> handle(OpenTab c) {
-			TabOpened tabOpened = new TabOpened(c.getId(), c.getTableNumber(), c.getWaiter());
-			return Arrays.asList(tabOpened);
-		}
-	}
+    public boolean handles(Command c) {
+        return true;
+    }
 
-	private class PlaceOrderHandler implements CommandHandler<PlaceOrder> {
-		@Override
-		public Collection<Event> handle(PlaceOrder c) {
-			if (!open)
-				throw new TabNotOpen();
-			Collection<Event> events = new ArrayList<>();
-			List<OrderedItem> drinks = null;
-			drinks = c.getItems().stream().filter(i -> i.isDrink()).collect(Collectors.toList());
-			if (!drinks.isEmpty()) {
-				events.add(new DrinksOrdered(c.getId(), drinks));
-			}
-			List<OrderedItem> food = null;
-			food = c.getItems().stream().filter(i -> !i.isDrink()).collect(Collectors.toList());
-			if (!food.isEmpty()) {
-				events.add(new FoodOrdered(c.getId(), food));
-			}
-			return events;
-		}
-	}
+    public boolean applies(Event e) {
+        return true;
+    }
 
-	private class MarkDrinksServedHandler implements CommandHandler<MarkDrinksServed> {
-		@Override
-		public Collection<Event> handle(MarkDrinksServed c) {
-			if (!open)
-				throw new TabNotOpen();
-			if (!areDrinksOutstanding(c.getMenuItems()))
-				throw new DrinksNotOutstanding();
-			Collection<Event> events = new ArrayList<>();
-			events.add(new DrinksServed(c.getId(), c.getMenuItems()));
-			return events;
-		}
-	}
+    private static class OpenTabHandler implements CommandHandler {
+        @Override
+        public boolean handles(Command c) {
+            return c instanceof OpenTab;
+        }
 
-	private class MarkFoodPreparedHandler implements CommandHandler<MarkFoodPrepared> {
-		@Override
-		public Collection<Event> handle(MarkFoodPrepared c) {
-			if (!open)
-				throw new TabNotOpen();
-			if (!areFoodOutstanding(c.getMenuItems()))
-				throw new FoodNotOutstanding();
-			Collection<Event> events = new ArrayList<>();
-			events.add(new FoodPrepared(c.getId(), c.getMenuItems()));
-			return events;
-		}
-	}
+        @Override
+        public Collection<Event> handle(Command c) {
+            OpenTab o = (OpenTab) c;
+            TabOpened tabOpened = new TabOpened(o.getId(), o.getTableNumber(), o.getWaiter());
+            return List.of(tabOpened);
+        }
+    }
 
-	private class MarkFoodServedHandler implements CommandHandler<MarkFoodServed> {
-		@Override
-		public Collection<Event> handle(MarkFoodServed c) {
-			if (!open)
-				throw new TabNotOpen();
-			if (!areFoodPrepared(c.getMenuItems()))
-				throw new FoodNotPrepared();
-			Collection<Event> events = new ArrayList<>();
-			events.add(new FoodServed(c.getId(), c.getMenuItems()));
-			return events;
-		}
-	}
+    private class PlaceOrderHandler implements CommandHandler {
 
-	private class CloseTabHandler implements CommandHandler<CloseTab> {
-		@Override
-		public Collection<Event> handle(CloseTab c) {
-			if (!open)
-				throw new TabNotOpen();
-			if(!outstandingDrinks.isEmpty()||!outstandingFood.isEmpty()||!preparedFood.isEmpty())
-				throw new NotEverythingServed();
-			double ap = c.getAmountPaid();
-			if (ap < servedItemsValue)
-				throw new NotEnough();
-			Collection<Event> events = new ArrayList<>();
+        @Override
+        public boolean handles(Command c) {
+            return c instanceof PlaceOrder;
+        }
 
-			TabClosed tc = new TabClosed(c.getId(), ap, servedItemsValue, ap - servedItemsValue);
-			events.add(tc);
-			return events;
-		}
-	}
+        @Override
+        public Collection<Event> handle(Command c) {
+            PlaceOrder p = (PlaceOrder) c;
+            if (!open)
+                throw new TabNotOpen();
+            Collection<Event> events = new ArrayList<>();
+            var drinks = p.getItems()
+                          .stream()
+                          .filter(OrderedItem::isDrink)
+                          .collect(Collectors.toList());
+            if (!drinks.isEmpty()) {
+                events.add(new DrinksOrdered(c.getId(), drinks));
+            }
+            var food = p.getItems()
+                        .stream()
+                        .filter(Predicate.not(OrderedItem::isDrink))
+                        .collect(Collectors.toList());
+            if (!food.isEmpty()) {
+                events.add(new FoodOrdered(c.getId(), food));
+            }
+            return events;
+        }
+    }
 
-	private class TabOpenedApplier implements ApplyEvent<TabOpened> {
+    private class MarkDrinksServedHandler implements CommandHandler {
+        @Override
+        public boolean handles(Command c) {
+            return c instanceof MarkDrinksServed;
+        }
 
-		@Override
-		public void apply(TabOpened event) {
-			open = true;
-		}
+        @Override
+        public Collection<Event> handle(Command c) {
+            MarkDrinksServed m = (MarkDrinksServed) c;
+            if (!open)
+                throw new TabNotOpen();
+            if (!areDrinksOutstanding(m.getMenuItems()))
+                throw new DrinksNotOutstanding();
+            return List.of(new DrinksServed(m.getId(), m.getMenuItems()));
+        }
 
-	}
+    }
 
-	private class DrinksOrderedApplier implements ApplyEvent<DrinksOrdered> {
-		@Override
-		public void apply(DrinksOrdered event) {
-			outstandingDrinks.addAll(event.getItems());
-		}
-	}
+    private class MarkFoodPreparedHandler implements CommandHandler {
 
-	private class DrinksServedApplier implements ApplyEvent<DrinksServed> {
-		@Override
-		public void apply(DrinksServed event) {
-			for (Integer num : event.getMenuItems()) {
-				Optional<OrderedItem> optional = null;
-				optional = outstandingDrinks.stream().filter(i -> i.getMenuNumber() == num).findFirst();
-				OrderedItem item = optional.get();
-				outstandingDrinks.remove(item);
-				servedItemsValue += item.getPrice();
-			}
-		}
-	}
+        @Override
+        public boolean handles(Command c) {
+            return c instanceof MarkFoodPrepared;
+        }
 
-	private class FoodOrderedApplier implements ApplyEvent<FoodOrdered> {
-		@Override
-		public void apply(FoodOrdered event) {
-			outstandingFood.addAll(event.getItems());
-		}
-	}
+        @Override
+        public Collection<Event> handle(Command c) {
+            MarkFoodPrepared m = (MarkFoodPrepared) c;
+            if (!open)
+                throw new TabNotOpen();
+            if (!areFoodOutstanding(m.getMenuItems()))
+                throw new FoodNotOutstanding();
+            return List.of(new FoodPrepared(m.getId(), m.getMenuItems()));
+        }
+    }
 
-	private class FoodPreparedApplier implements ApplyEvent<FoodPrepared> {
-		@Override
-		public void apply(FoodPrepared event) {
-			for (Integer num : event.getMenuItems()) {
-				Optional<OrderedItem> optional = null;
-				optional = outstandingFood.stream().filter(i -> i.getMenuNumber() == num).findFirst();
-				OrderedItem item = optional.get();
-				outstandingFood.remove(item);
-				preparedFood.add(item);
-			}
-		}
-	}
+    private class MarkFoodServedHandler implements CommandHandler {
 
-	private class FoodServedApplier implements ApplyEvent<FoodServed> {
-		@Override
-		public void apply(FoodServed event) {
-			for (Integer num : event.getMenuItems()) {
-				Optional<OrderedItem> optional = null;
-				optional = preparedFood.stream().filter(i -> i.getMenuNumber() == num).findFirst();
-				OrderedItem item = optional.get();
-				preparedFood.remove(item);
-				servedItemsValue += item.getPrice();
-			}
-		}
-	}
+        @Override
+        public boolean handles(Command c) {
+            return c instanceof MarkFoodServed;
+        }
 
-	private class TabClosedApplier implements ApplyEvent<TabClosed> {
+        @Override
+        public Collection<Event> handle(Command c) {
+            MarkFoodServed m = (MarkFoodServed) c;
+            if (!open)
+                throw new TabNotOpen();
+            if (!areFoodPrepared(m.getMenuItems()))
+                throw new FoodNotPrepared();
+            return List.of(new FoodServed(m.getId(), m.getMenuItems()));
+        }
+    }
 
-		@Override
-		public void apply(TabClosed event) {
-			open = false;
-		}
+    private class CloseTabHandler implements CommandHandler {
 
-	}
+        @Override
+        public boolean handles(Command c) {
+            return c instanceof CloseTab;
+        }
 
-	@SuppressWarnings("unchecked")
-	@Override
-	public Collection<Event> handle(Command command) {
-		if (handlers.containsKey(command.getClass())) {
-			return handlers.get(command.getClass()).handle(command);
-		} else {
-			throw new IllegalArgumentException("Command not supported: " + command.getClass());
-		}
-	}
+        @Override
+        public Collection<Event> handle(Command c) {
+            CloseTab t = (CloseTab) c;
+            if (!open)
+                throw new TabNotOpen();
+            if (!outstandingDrinks.isEmpty() || !outstandingFood.isEmpty() || !preparedFood.isEmpty())
+                throw new NotEverythingServed();
+            double ap = t.getAmountPaid();
+            if (ap < servedItemsValue)
+                throw new NotEnough();
+            return List.of(new TabClosed(t.getId(), ap, servedItemsValue, ap - servedItemsValue));
+        }
+    }
 
-	@SuppressWarnings("unchecked")
-	@Override
-	public void apply(Event event) {
-		if (applier.containsKey(event.getClass())) {
-			applier.get(event.getClass()).apply(event);
-		} else {
-			throw new IllegalArgumentException("Event not supported: " + event.getClass());
-		}
-	}
+    private class TabOpenedApplier implements ApplyEvent {
 
-	private boolean areDrinksOutstanding(List<Integer> menuNumbers) {
-		List<Integer> curOutstanding = null;
-		curOutstanding = new ArrayList<>(
-				outstandingDrinks.stream().map(i -> i.getMenuNumber()).collect(Collectors.toList()));
-		for (Integer item : menuNumbers)
-			if (!curOutstanding.remove(item))
-				return false;
-		return true;
-	}
+        @Override
+        public boolean applies(Event event) {
+            return event instanceof TabOpened;
+        }
 
-	private boolean areFoodOutstanding(List<Integer> menuNumbers) {
-		List<Integer> curOutstanding = null;
-		curOutstanding = new ArrayList<>(
-				outstandingFood.stream().map(i -> i.getMenuNumber()).collect(Collectors.toList()));
-		for (Integer item : menuNumbers)
-			if (!curOutstanding.remove(item))
-				return false;
-		return true;
-	}
+        @Override
+        public void apply(Event event) {
+            open = true;
+        }
+    }
 
-	private boolean areFoodPrepared(List<Integer> menuNumbers) {
-		List<Integer> curOutstanding = null;
-		curOutstanding = new ArrayList<>(
-				preparedFood.stream().map(i -> i.getMenuNumber()).collect(Collectors.toList()));
-		for (Integer item : menuNumbers)
-			if (!curOutstanding.remove(item))
-				return false;
-		return true;
-	}
+    private class DrinksOrderedApplier implements ApplyEvent {
+
+        @Override
+        public boolean applies(Event event) {
+            return event instanceof DrinksOrdered;
+        }
+
+        @Override
+        public void apply(Event event) {
+            DrinksOrdered d = (DrinksOrdered) event;
+            outstandingDrinks.addAll(d.getItems());
+        }
+    }
+
+    private class DrinksServedApplier implements ApplyEvent {
+
+        @Override
+        public boolean applies(Event event) {
+            return event instanceof DrinksServed;
+        }
+
+        @Override
+        public void apply(Event event) {
+            DrinksServed d = (DrinksServed) event;
+            for (Integer num : d.getMenuItems()) {
+                outstandingDrinks.stream()
+                                 .filter(i -> i.getMenuNumber() == num)
+                                 .findFirst()
+                                 .ifPresent((item) -> {
+                                     outstandingDrinks.remove(item);
+                                     servedItemsValue += item.getPrice();
+                                 });
+            }
+        }
+    }
+
+    private class FoodOrderedApplier implements ApplyEvent {
+
+        @Override
+        public boolean applies(Event event) {
+            return event instanceof FoodOrdered;
+        }
+
+        @Override
+        public void apply(Event event) {
+            FoodOrdered f = (FoodOrdered) event;
+            outstandingFood.addAll(f.getItems());
+        }
+    }
+
+    private class FoodPreparedApplier implements ApplyEvent {
+
+        @Override
+        public boolean applies(Event event) {
+            return event instanceof FoodPrepared;
+        }
+
+        @Override
+        public void apply(Event event) {
+            FoodPrepared f = (FoodPrepared) event;
+            for (Integer num : f.getMenuItems()) {
+                outstandingFood.stream()
+                               .filter(i -> i.getMenuNumber() == num)
+                               .findFirst()
+                               .ifPresent((item) -> {
+                                   outstandingFood.remove(item);
+                                   preparedFood.add(item);
+                               });
+            }
+        }
+    }
+
+    private class FoodServedApplier implements ApplyEvent {
+
+        @Override
+        public boolean applies(Event event) {
+            return event instanceof FoodServed;
+        }
+
+        @Override
+        public void apply(Event event) {
+            FoodServed f = (FoodServed) event;
+            for (Integer num : f.getMenuItems()) {
+                preparedFood.stream()
+                            .filter(i -> i.getMenuNumber() == num)
+                            .findFirst()
+                            .ifPresent((item) -> {
+                                preparedFood.remove(item);
+                                servedItemsValue += item.getPrice();
+                            });
+            }
+        }
+    }
+
+    private class TabClosedApplier implements ApplyEvent {
+
+        @Override
+        public boolean applies(Event event) {
+            return event instanceof TabClosed;
+        }
+
+        @Override
+        public void apply(Event event) {
+            open = false;
+        }
+
+    }
+
+    @Override
+    public Collection<Event> handle(Command command) {
+        return handlers.stream()
+                       .filter((handler) -> handler.handles(command))
+                       .findAny()
+                       .orElseThrow(() -> new IllegalArgumentException("Command not supported: " + command.getClass()))
+                       .handle(command);
+    }
+
+    @Override
+    public void apply(Event event) {
+        applier.stream()
+               .filter((applier) -> applier.applies(event))
+               .findAny()
+               .orElseThrow(() -> new IllegalArgumentException("Command not supported: " + event.getClass()))
+               .apply(event);
+    }
+
+    private boolean areDrinksOutstanding(List<Integer> menuNumbers) {
+        var curOutstanding = outstandingDrinks.stream()
+                                          .map(OrderedItem::getMenuNumber)
+                                          .collect(Collectors.toCollection(ArrayList::new));
+        for (Integer item : menuNumbers)
+            if (!curOutstanding.remove(item))
+                return false;
+        return true;
+    }
+
+    private boolean areFoodOutstanding(List<Integer> menuNumbers) {
+        var curOutstanding = outstandingFood.stream()
+                                        .map(OrderedItem::getMenuNumber)
+                                        .collect(Collectors.toCollection(ArrayList::new));
+        for (Integer item : menuNumbers)
+            if (!curOutstanding.remove(item))
+                return false;
+        return true;
+    }
+
+    private boolean areFoodPrepared(List<Integer> menuNumbers) {
+        var curOutstanding = preparedFood.stream()
+                                     .map(OrderedItem::getMenuNumber)
+                                     .collect(Collectors.toCollection(ArrayList::new));
+        for (Integer item : menuNumbers)
+            if (!curOutstanding.remove(item))
+                return false;
+        return true;
+    }
 
 }

@@ -11,89 +11,89 @@ import org.springframework.cloud.client.loadbalancer.LoadBalancerClient;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.hateoas.MediaTypes;
 import org.springframework.http.HttpMethod;
-import org.springframework.http.ResponseEntity;
-import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.web.client.RestTemplate;
 import ui.ItemTodo;
 import ui.TableTodo;
 
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
 public class OpenTabClient implements OpenTabInteface {
-	private final Logger log = LoggerFactory.getLogger(OpenTabClient.class);
+    private static final Logger log = LoggerFactory.getLogger(OpenTabClient.class);
 
-	private RestTemplate restTemplate;
-	private String openServiceHost;
-	private long openServicePort;
-	private boolean useRibbon;
+    private final RestTemplate restTemplate;
+    private final String openServiceHost;
+    private final long openServicePort;
+    private final boolean useRibbon;
 
-	private LoadBalancerClient loadBalancer;
+    private LoadBalancerClient loadBalancer;
 
-	@Autowired
-	public OpenTabClient(@Value("${open.service.host:opentabs}") String openServiceHost,
-			@Value("${open.service.port:8080}") long openServicePort,
-			@Value("${ribbon.eureka.enabled:false}") boolean useRibbon) {
-		this.restTemplate = getRestTemplate();
-		this.openServiceHost = openServiceHost;
-		this.openServicePort = openServicePort;
-		this.useRibbon = useRibbon;
-	}
+    @Autowired
+    public OpenTabClient(@Value("${open.service.host:opentabs}") String openServiceHost,
+                         @Value("${open.service.port:8080}") long openServicePort,
+                         @Value("${ribbon.eureka.enabled:false}") boolean useRibbon) {
+        this.restTemplate = getRestTemplate();
+        this.openServiceHost = openServiceHost;
+        this.openServicePort = openServicePort;
+        this.useRibbon = useRibbon;
+    }
 
-	@Autowired(required = false)
-	public void setLoadBalancer(LoadBalancerClient loadBalancer) {
-		this.loadBalancer = loadBalancer;
-	}
+    @Autowired(required = false)
+    public void setLoadBalancer(LoadBalancerClient loadBalancer) {
+        this.loadBalancer = loadBalancer;
+    }
 
-	protected RestTemplate getRestTemplate() {
-		ObjectMapper mapper = new ObjectMapper();
-		mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+    protected RestTemplate getRestTemplate() {
+        ObjectMapper mapper = new ObjectMapper();
+        mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
-		MappingJackson2HttpMessageConverter converter = new MappingJackson2HttpMessageConverter();
-		converter.setSupportedMediaTypes(Arrays.asList(MediaTypes.HAL_JSON));
-		converter.setObjectMapper(mapper);
+        MappingJackson2HttpMessageConverter converter = new MappingJackson2HttpMessageConverter();
+        converter.setSupportedMediaTypes(List.of(MediaTypes.HAL_JSON));
+        converter.setObjectMapper(mapper);
 
-		RestTemplate rest = new RestTemplate(Collections.<HttpMessageConverter<?>>singletonList(converter));
-		return rest;
-	}
+        return new RestTemplate(List.of(converter));
+    }
 
-	private String openURL() {
-		String url;
-		if (useRibbon) {
-			ServiceInstance instance = loadBalancer.choose("OPENTAB");
-			url = "http://" + instance.getHost() + ":" + instance.getPort() + "/";
-		} else {
-			url = "http://" + openServiceHost + ":" + openServicePort + "/";
-		}
-		log.trace("Catalog: URL {} ", url);
-		return url;
-	}
+    private String openURL() {
+        String url;
+        if (useRibbon) {
+            ServiceInstance instance = loadBalancer.choose("OPENTAB");
+            url = "http://" + instance.getHost() + ":" + instance.getPort() + "/";
+        } else {
+            url = "http://" + openServiceHost + ":" + openServicePort + "/";
+        }
+        log.trace("Catalog: URL {} ", url);
+        return url;
+    }
 
-	@Override
-	public TableTodo getByTab(long id) {
-		return restTemplate.getForObject(openURL() + "tab/id/" + id, TableTodo.class);
-	}
+    @Override
+    public TableTodo getByTab(long id) {
+        return restTemplate.getForObject(openURL() + "tab/" + id, TableTodo.class);
+    }
 
-	@Override
-	public TableTodo getByTableNumber(int tableNumber) {
-		return restTemplate.getForObject(openURL() + "tab/table/" + tableNumber, TableTodo.class);
-	}
+    @Override
+    public TableTodo getByTableNumber(int tableNumber) {
+        var type = new ParameterizedTypeReference<List<TableTodo>>() {
+        };
+        var response = restTemplate.exchange(openURL() + "tab?tableNumber=" + tableNumber, HttpMethod.GET, null, type);
+        List<TableTodo> list = response.getBody();
+        if (list == null) return null;
+        return list.stream()
+                   .findAny()
+                   .orElse(null);
+    }
 
-	@Override
-	public Map<Integer, List<ItemTodo>> getTodoListByWaiter(String waiter) {
-		ParameterizedTypeReference<Map<Integer, List<ItemTodo>>> type = null;
-		type = new ParameterizedTypeReference<Map<Integer, List<ItemTodo>>>() {
-		};
-		ResponseEntity<Map<Integer, List<ItemTodo>>> resp = null;
-		resp = restTemplate.exchange(openURL() + "tab/" + waiter, HttpMethod.GET, null, type);
-		return resp.getBody();
-	}
+    @Override
+    public Map<Integer, List<ItemTodo>> getTodoListByWaiter(String waiter) {
+        var type = new ParameterizedTypeReference<Map<Integer, List<ItemTodo>>>() {
+        };
+        var resp = restTemplate.exchange(openURL() + "tab/" + waiter, HttpMethod.GET, null, type);
+        return resp.getBody();
+    }
 
-	@Override
-	public Double getToPayByTableNumber(int tableNumber) {
-		return restTemplate.getForObject(openURL() + "tab/topay/" + tableNumber, Double.class);
-	}
+    @Override
+    public Double getToPayByTableNumber(int tableNumber) {
+        return restTemplate.getForObject(openURL() + "tab/topay/" + tableNumber, Double.class);
+    }
 }

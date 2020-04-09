@@ -7,6 +7,9 @@
 <body>
 	<h1 layout:fragment="header">Mark food served</h1>
 	<div layout:fragment="content" class="container">
+		<div class="form-group">
+			<label><a href="/ui/">Back to menu</a></label>
+		</div>
 		<form action="../markfoodserved/" method="post" role="form">
 			<div class="form-group">
 				<label th:text="${'Table number: '+tt.tableNumber}">Table number</label>

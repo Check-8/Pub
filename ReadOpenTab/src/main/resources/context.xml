@@ -23,16 +23,4 @@
 		</bean>
 	</beans>
 
-	<beans profile="mysql">
-		<bean id="openTab" class="openTabs.readModel.OpenTabsMySql">
-			<qualifier value="openTabs" />
-		</bean>
-	</beans>
-	
-	<beans profile="shared">
-		<bean id="openTab" class="openTabs.readModel.OpenTabsSharedMySql">
-			<qualifier value="openTabs" />
-		</bean>
-	</beans>
-
 </beans>

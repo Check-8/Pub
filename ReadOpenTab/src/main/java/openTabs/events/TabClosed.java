@@ -4,18 +4,17 @@ public class TabClosed implements Event {
 	private static final String EVENT_NAME = "TAB_CLOSED";
 	
 	private long id;
-	private double aumountPaid;
+	private double amountPaid;
 	private double orderValue;
 	private double tipValue;
 	
-	@SuppressWarnings("unused")
 	private TabClosed() {
 	}
 
-	public TabClosed(long id, double aumountPaid, double orderValue, double tipValue) {
+	public TabClosed(long id, double amountPaid, double orderValue, double tipValue) {
 		super();
 		this.id = id;
-		this.aumountPaid = aumountPaid;
+		this.amountPaid = amountPaid;
 		this.orderValue = orderValue;
 		this.tipValue = tipValue;
 	}
@@ -30,8 +29,8 @@ public class TabClosed implements Event {
 		return EVENT_NAME;
 	}
 
-	public double getAumountPaid() {
-		return aumountPaid;
+	public double getAmountPaid() {
+		return amountPaid;
 	}
 
 	public double getOrderValue() {
@@ -44,7 +43,7 @@ public class TabClosed implements Event {
 
 	@Override
 	public String toString() {
-		return "TabClosed [id=" + id + ", aumountPaid=" + aumountPaid + ", orderValue=" + orderValue + ", tipValue="
+		return "TabClosed [id=" + id + ", amountPaid=" + amountPaid + ", orderValue=" + orderValue + ", tipValue="
 				+ tipValue + "]";
 	}
 
@@ -53,7 +52,7 @@ public class TabClosed implements Event {
 		final int prime = 31;
 		int result = 1;
 		long temp;
-		temp = Double.doubleToLongBits(aumountPaid);
+		temp = Double.doubleToLongBits(amountPaid);
 		result = prime * result + (int) (temp ^ (temp >>> 32));
 		result = prime * result + (int) (id ^ (id >>> 32));
 		temp = Double.doubleToLongBits(orderValue);
@@ -72,15 +71,13 @@ public class TabClosed implements Event {
 		if (!(obj instanceof TabClosed))
 			return false;
 		TabClosed other = (TabClosed) obj;
-		if (Double.doubleToLongBits(aumountPaid) != Double.doubleToLongBits(other.aumountPaid))
+		if (Double.doubleToLongBits(amountPaid) != Double.doubleToLongBits(other.amountPaid))
 			return false;
 		if (id != other.id)
 			return false;
 		if (Double.doubleToLongBits(orderValue) != Double.doubleToLongBits(other.orderValue))
 			return false;
-		if (Double.doubleToLongBits(tipValue) != Double.doubleToLongBits(other.tipValue))
-			return false;
-		return true;
+		return Double.doubleToLongBits(tipValue) == Double.doubleToLongBits(other.tipValue);
 	}
 
 }

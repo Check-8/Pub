@@ -4,13 +4,15 @@ import java.util.List;
 import java.util.Map;
 
 public interface OpenTabsQueries {
-	public TableTodo getByTab(long idTab);
+    TableTodo getByTab(long idTab);
 
-	public TableTodo getOpenByTableNumber(int tableNumber);
+    List<TableTodo> getByParams(QueryParams params);
 
-	public Map<Integer, List<ItemTodo>> getTodoListForWaiter(String waiter);
+    TableTodo getOpenByTableNumber(int tableNumber);
 
-	public Double getPriceToPayByTab(long idTab);
-	
-	public Double getPriceToPayByTableNumber(int tableNumber);
+    Map<Integer, List<ItemTodo>> getTodoListForWaiter(String waiter);
+
+    Double getPriceToPayByTab(long idTab);
+
+    Double getPriceToPayByTableNumber(int tableNumber);
 }

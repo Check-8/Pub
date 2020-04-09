@@ -6,7 +6,8 @@ import tab.commands.Command;
 import tab.events.Event;
 
 
-@FunctionalInterface
-public interface CommandHandler<T extends Command> {
-	public Collection<Event> handle(T command);
+public interface CommandHandler {
+	boolean handles(Command c);
+
+	Collection<Event> handle(Command command);
 }

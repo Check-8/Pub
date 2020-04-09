@@ -3,6 +3,7 @@ package tab.commands;
 import java.util.List;
 
 import tab.events.OrderedItem;
+import tab.model.Order;
 
 public class PlaceOrder implements Command {
 	private long id;

@@ -7,6 +7,9 @@
 <body>
 	<h1 layout:fragment="header">Close tab</h1>
 	<div layout:fragment="content" class="container">
+		<div class="form-group">
+			<label><a href="/ui/">Back to menu</a></label>
+		</div>
 		<form action="../closetab/" method="post" role="form">
 			<div class="form-group">
 				<label th:text="${'Id tab: '+tt.tabId}">Id tab</label>

@@ -38,24 +38,4 @@
 		</bean>
 	</beans>
 
-	<beans profile="mysql">
-		<bean id="tabAggregates" class="tab.TabAggregatesMySql">
-			<qualifier value="tabAggregates" />
-		</bean>
-
-		<bean id="menuClientE" class="tab.client.MenuClientEureka">
-			<qualifier value="menuClient" />
-		</bean>
-	</beans>
-	
-	<beans profile="shared">
-		<bean id="tabAggregates" class="tab.TabAggregatesSharedMySql">
-			<qualifier value="tabAggregates" />
-		</bean>
-
-		<bean id="menuClientE" class="tab.client.MenuClientEureka">
-			<qualifier value="menuClient" />
-		</bean>
-	</beans>
-
 </beans>
